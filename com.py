@@ -27,16 +27,29 @@ def list_serial_ports():
     for i, port in enumerate(ports, start=1):
         print(f"{i}: 设备: {port.device}, 描述: {port.description}, VID:PID {port.vid}:{port.pid}")
     return ports
-
+def read_serial_data(serial_port):
+    if serial_port.in_waiting > 0:
+        data = serial_port.read(serial_port.in_waiting)
+        return data.hex().upper() # 将二进制数据转换为十六进制字符串，并转换为大写
+    return ""
+def wait_and_read_serial_data(serial_port):
+    for _ in range(50):
+        data = read_serial_data(serial_port)
+        if data:
+            return data
+        time.sleep(0.02)  # 等待一段时间后再次检查，避免 CPU 占用过高
 def send_hexdata_string(serial_port, hex_string):
     data = binascii.unhexlify(hex_string)
     crc_checksum = crc16_modbus(data)
     crc_bytes = crc16_to_bytes(crc_checksum)
     hex_string = hex_string + crc_bytes.hex().upper()
-    print(hex_string)
+    print(f"发送: {hex_string}")
     # 发送数据
     serial_port.write(binascii.unhexlify(hex_string))
 
+    #response = read_serial_data(serial_port)
+    response = wait_and_read_serial_data(serial_port)
+    print(f"<<收到: {response}")
 def int_to_hex_4_letters(num):
     # 确保输入是一个整数
     if not isinstance(num, int):
@@ -103,10 +116,10 @@ def main():
         while True:
             if keyboard.is_pressed('w'):
                 addMotorSpeed(ser, 32, 32)
-                time.sleep(0.1)  # 防止按键重复触发
+                time.sleep(0.05)  # 防止按键重复触发
             elif keyboard.is_pressed('s'):
                 addMotorSpeed(ser, -32, -32)
-                time.sleep(0.1)  # 防止按键重复触发
+                time.sleep(0.05)  # 防止按键重复触发
             elif keyboard.is_pressed('q'):
                 break
 
